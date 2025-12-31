@@ -6,10 +6,11 @@ After=network.target
 Type=simple
 User=ubuntu
 Group=ubuntu
-WorkingDirectory=/home/ubuntu/springapi
+WorkingDirectory=%h/springall/springapi
 Environment="JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64"
 Environment="PATH=/usr/lib/jvm/java-21-openjdk-amd64/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-ExecStart=/usr/bin/java -jar -Xms512m -Xmx1024m /home/ubuntu/springapi/app.jar
+ExecStart=/usr/bin/java -jar -Xms512m -Xmx1024m %h/springall/springapi/app.jar
+EnvironmentFile=%h/springall/springapi/.env
 Restart=always
 RestartSec=10
 StandardOutput=journal
