@@ -27,12 +27,29 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew build -x test
       
+      - name: List build artifacts
+        run: |
+          echo "Checking build/libs directory:"
+          ls -la build/libs/ || echo "build/libs directory not found"
+          echo "Checking build directory:"
+          ls -la build/ || echo "build directory not found"
+      
       - name: Create deployment package
         run: |
           mkdir -p deploy
-          cp build/libs/*.jar deploy/app.jar
+          # JAR 파일 찾기 (plain JAR 제외, executable JAR만)
+          JAR_FILE=$(find build/libs -name "*.jar" ! -name "*-plain.jar" | head -n 1)
+          if [ -z "$JAR_FILE" ]; then
+            echo "Error: JAR file not found in build/libs/"
+            ls -la build/libs/
+            exit 1
+          fi
+          echo "Found JAR file: $JAR_FILE"
+          cp "$JAR_FILE" deploy/app.jar
           cp -r scripts deploy/
           cp env.example deploy/.env.example
+          echo "Deployment package created:"
+          ls -la deploy/
       
       - name: Deploy to EC2
         uses: appleboy/scp-action@v0.1.7
@@ -41,7 +58,7 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "deploy/*"
-          target: "/home/ubuntu/springapi"
+          target: "/home/ubuntu/springall/springapi"
           strip_components: 1
       
       - name: Execute deployment script
@@ -51,7 +68,7 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd /home/ubuntu/springapi
+            cd /home/ubuntu/springall/springapi
             chmod +x scripts/deploy.sh
             ./scripts/deploy.sh
 
