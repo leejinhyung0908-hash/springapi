@@ -4,10 +4,14 @@ set -e
 
 echo "🚀 배포를 시작합니다..."
 
-PROJECT_DIR="/home/ubuntu/springapi"
+# 현재 스크립트가 있는 디렉토리 기준으로 프로젝트 루트 찾기
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 SERVICE_NAME="springapi"
 BACKUP_DIR="$PROJECT_DIR/backups"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+echo "📁 프로젝트 디렉토리: $PROJECT_DIR"
 
 # 이전 버전 백업
 if [ -f "$PROJECT_DIR/app.jar" ]; then
@@ -45,7 +49,16 @@ fi
 # 서비스 시작
 echo "▶️  서비스를 시작합니다..."
 sudo systemctl start "${SERVICE_NAME}.service"
-sleep 3
+sleep 5
+
+# 서비스 상태 확인
+echo "📊 서비스 상태 확인..."
+if ! systemctl is-active --quiet "${SERVICE_NAME}.service"; then
+    echo "❌ 서비스가 시작되지 않았습니다!"
+    echo "📋 서비스 로그:"
+    sudo journalctl -u "${SERVICE_NAME}.service" -n 50 --no-pager
+    exit 1
+fi
 
 # 헬스 체크
 echo "🏥 헬스 체크를 수행합니다..."
@@ -61,11 +74,28 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
     
     RETRY_COUNT=$((RETRY_COUNT + 1))
     echo "⏳ 헬스 체크 대기 중... ($RETRY_COUNT/$MAX_RETRIES)"
+    
+    # 5번째 시도마다 서비스 상태 확인
+    if [ $((RETRY_COUNT % 5)) -eq 0 ]; then
+        if ! systemctl is-active --quiet "${SERVICE_NAME}.service"; then
+            echo "❌ 서비스가 중지되었습니다!"
+            echo "📋 서비스 로그:"
+            sudo journalctl -u "${SERVICE_NAME}.service" -n 50 --no-pager
+            break
+        fi
+    fi
+    
     sleep 2
 done
 
 if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
-    echo "❌ 헬스 체크 실패! 롤백을 수행합니다..."
+    echo "❌ 헬스 체크 실패!"
+    echo "📋 서비스 상태:"
+    sudo systemctl status "${SERVICE_NAME}.service" --no-pager -l || true
+    echo "📋 서비스 로그 (최근 50줄):"
+    sudo journalctl -u "${SERVICE_NAME}.service" -n 50 --no-pager || true
+    echo "📋 포트 확인:"
+    sudo netstat -tlnp | grep 8080 || ss -tlnp | grep 8080 || true
     
     # 롤백
     if [ -f "$BACKUP_DIR/app.jar.$TIMESTAMP" ]; then

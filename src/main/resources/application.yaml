@@ -40,6 +40,19 @@ cookie:
   same-site: ${COOKIE_SAME_SITE:Lax}  # Lax, Strict, None
 
 
+# Actuator 설정
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+  health:
+    redis:
+      enabled: false  # Redis가 없어도 헬스 체크는 성공하도록
+
 # Swagger / Springdoc 설정
 springdoc:
   api-docs:
