@@ -1,0 +1,69 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.5.7'
+	id 'io.spring.dependency-management' version '1.1.7'
+}
+
+allprojects {
+	group = 'site.kroaddy'
+	version = '0.0.1-SNAPSHOT'
+	
+	repositories {
+		mavenCentral()
+	}
+}
+
+// 루트 프로젝트 설정 (API)
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+
+dependencies {
+	// Spring Web (MVC) - 메인 웹 프레임워크
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	
+	// WebClient for HTTP requests (외부 서비스 프록시용)
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+	
+	// Redis (일반 버전)
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+	
+	// .env 파일 자동 로드
+	implementation 'io.github.cdimascio:dotenv-java:3.0.0'
+	
+	// JWT
+	implementation 'io.jsonwebtoken:jjwt-api:0.12.3'
+	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.3'
+	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.3'
+	
+	// Actuator (모니터링)
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'io.micrometer:micrometer-registry-prometheus'
+	
+	// SpringDoc OpenAPI (Swagger) - MVC 버전
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
+	
+	// DevTools
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+	
+	// Lombok
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+	
+	// Test
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}

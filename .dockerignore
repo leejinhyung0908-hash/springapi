@@ -1,0 +1,73 @@
+# Build directories
+build/
+**/build/
+**/target/
+**/out/
+
+# Gradle
+.gradle/
+**/.gradle/
+gradle/
+**/gradle/
+!gradle/wrapper/
+!**/gradle/wrapper/
+*.iml
+.idea/
+.vscode/
+*.ipr
+*.iws
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Documentation
+*.md
+!README.md
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Test files
+**/test/
+**/test-results/
+**/reports/
+
+# Git
+.git/
+.gitignore
+
+# Docker
+docker-compose.yaml
+Dockerfile
+**/Dockerfile
+.dockerignore
+
+# Temporary files
+tmp/
+**/tmp/
+*.tmp
+
+# Node modules (if any)
+node_modules/
+**/node_modules/
+
+# Coverage reports
+coverage/
+**/coverage/
+
+*.pem
+
