@@ -17,6 +17,7 @@ public class CorsConfig implements WebMvcConfigurer {
         public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
                                 .allowedOriginPatterns(
+                                                // 로컬 개발 환경
                                                 "http://localhost:3000",
                                                 "http://localhost:3001",
                                                 "http://localhost:4000",
@@ -24,7 +25,11 @@ public class CorsConfig implements WebMvcConfigurer {
                                                 "http://127.0.0.1:3000",
                                                 "http://127.0.0.1:3001",
                                                 "http://127.0.0.1:4000",
-                                                "http://127.0.0.1:8000")
+                                                "http://127.0.0.1:8000",
+                                                // 프로덕션 환경 (Vercel)
+                                                "https://www.leejinhyung.shop",
+                                                "https://leejinhyung.shop",
+                                                "https://*.vercel.app")
                                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
                                 .allowedHeaders("*")
                                 .exposedHeaders("*")
@@ -40,6 +45,7 @@ public class CorsConfig implements WebMvcConfigurer {
                 // allowCredentials: true일 때는 와일드카드(*) 사용 불가
                 // 로컬 개발 환경을 위한 포트 추가
                 corsConfig.setAllowedOriginPatterns(Arrays.asList(
+                                // 로컬 개발 환경
                                 "http://localhost:3000",
                                 "http://localhost:3001",
                                 "http://localhost:4000",
@@ -47,7 +53,11 @@ public class CorsConfig implements WebMvcConfigurer {
                                 "http://127.0.0.1:3000",
                                 "http://127.0.0.1:3001",
                                 "http://127.0.0.1:4000",
-                                "http://127.0.0.1:8000"));
+                                "http://127.0.0.1:8000",
+                                // 프로덕션 환경 (Vercel)
+                                "https://www.leejinhyung.shop",
+                                "https://leejinhyung.shop",
+                                "https://*.vercel.app"));
 
                 // 허용할 HTTP 메서드
                 corsConfig.setAllowedMethods(Arrays.asList(
