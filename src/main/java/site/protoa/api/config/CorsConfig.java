@@ -81,3 +81,4 @@ public class CorsConfig implements WebMvcConfigurer {
                 return new CorsFilter(source);
         }
 }
+//CORS 설정 완료
