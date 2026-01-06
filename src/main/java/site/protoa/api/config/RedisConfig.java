@@ -12,6 +12,8 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 import io.lettuce.core.ClientOptions;
 import io.lettuce.core.SocketOptions;
 import io.lettuce.core.TimeoutOptions;
+import io.lettuce.core.SslOptions;
+import io.lettuce.core.SslVerifyMode;
 import java.time.Duration;
 
 import java.net.URI;
@@ -90,17 +92,34 @@ public class RedisConfig {
         }
 
         // LettuceClientConfiguration 생성
-        LettuceClientConfiguration clientConfig = LettuceClientConfiguration.builder()
+        LettuceClientConfiguration.Builder clientConfigBuilder = LettuceClientConfiguration.builder()
                 .clientOptions(ClientOptions.builder()
                         .socketOptions(SocketOptions.builder()
                                 .connectTimeout(Duration.ofSeconds(10))
+                                .keepAlive(true)
                                 .build())
                         .timeoutOptions(TimeoutOptions.builder()
                                 .fixedTimeout(Duration.ofSeconds(10))
                                 .build())
                         .build())
-                .commandTimeout(Duration.ofSeconds(10))
-                .build();
+                .commandTimeout(Duration.ofSeconds(10));
+
+        // SSL 설정 (Upstash Redis는 SSL 필수)
+        if (useSsl) {
+            try {
+                clientConfigBuilder.useSsl()
+                        .and()
+                        .sslOptions(SslOptions.builder()
+                                .build());
+
+                System.out.println("✅ SSL 설정 완료");
+            } catch (Exception e) {
+                System.err.println("⚠️ SSL 설정 실패: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+
+        LettuceClientConfiguration clientConfig = clientConfigBuilder.build();
 
         // LettuceConnectionFactory 생성 (설정과 클라이언트 설정 전달)
         LettuceConnectionFactory factory = new LettuceConnectionFactory(config, clientConfig);
@@ -108,20 +127,9 @@ public class RedisConfig {
         // 연결 초기화
         factory.afterPropertiesSet();
 
-        // 연결 테스트 (비동기 초기화를 위해 약간의 지연)
-        try {
-            Thread.sleep(500); // 연결 초기화 대기
-            factory.getConnection().ping();
-            System.out.println("✅ Redis 연결 테스트 성공!");
-        } catch (Exception e) {
-            System.err.println("❌ Redis 연결 테스트 실패: " + e.getMessage());
-            System.err.println("   호스트: " + config.getHostName());
-            System.err.println("   포트: " + config.getPort());
-            System.err.println("   SSL: " + useSsl);
-            e.printStackTrace();
-            // 연결 테스트 실패해도 빈은 생성 (런타임에 재시도 가능)
-            System.err.println("⚠️  경고: Redis 연결 테스트 실패했지만 계속 진행합니다.");
-        }
+        // 연결 테스트 제거 (런타임에 자동 재시도)
+        // 초기화 시 연결 테스트는 실패할 수 있으므로, 실제 사용 시점에 연결하도록 함
+        System.out.println("✅ Redis ConnectionFactory 생성 완료 (런타임 연결)");
 
         return factory;
     }
