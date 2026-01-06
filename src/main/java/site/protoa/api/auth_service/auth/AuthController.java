@@ -6,6 +6,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import site.protoa.api.auth_service.jwt.JwtTokenProvider;
+import site.protoa.api.auth_service.token.AccessTokenService;
+import site.protoa.api.auth_service.token.RefreshTokenService;
 
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,6 +22,8 @@ import java.util.Map;
 public class AuthController {
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final AccessTokenService accessTokenService;
+    private final RefreshTokenService refreshTokenService;
 
     @Value("${cookie.secure:false}")
     private boolean cookieSecure;
@@ -28,8 +32,11 @@ public class AuthController {
     private String cookieSameSite;
 
     @Autowired
-    public AuthController(JwtTokenProvider jwtTokenProvider) {
+    public AuthController(JwtTokenProvider jwtTokenProvider, AccessTokenService accessTokenService,
+                    RefreshTokenService refreshTokenService) {
         this.jwtTokenProvider = jwtTokenProvider;
+        this.accessTokenService = accessTokenService;
+        this.refreshTokenService = refreshTokenService;
     }
 
     /**
@@ -62,6 +69,15 @@ public class AuthController {
 
             // 토큰에서 사용자 ID 추출
             String userId = jwtTokenProvider.getSubjectFromToken(token);
+
+            // Redis에서 Access Token 확인 (저장된 토큰과 일치하는지 확인)
+            String storedToken = accessTokenService.getToken(userId);
+            if (storedToken == null || !storedToken.equals(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of(
+                                "error", "Unauthorized",
+                                "message", "저장된 토큰과 일치하지 않습니다."));
+            }
 
             // 사용자 정보 반환
             // TODO: 실제 사용자 정보를 DB에서 조회하거나, 소셜 로그인 정보를 저장/조회하는 로직 추가 필요
@@ -111,11 +127,23 @@ public class AuthController {
                                 "message", "유효하지 않은 Refresh Token입니다."));
             }
 
+            // DB에서 Refresh Token 확인
+            if (!refreshTokenService.existsToken(refreshToken)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of(
+                                "error", "Unauthorized",
+                                "message", "저장된 Refresh Token과 일치하지 않습니다."));
+            }
+
             // Refresh Token에서 사용자 ID 추출
             String userId = jwtTokenProvider.getSubjectFromToken(refreshToken);
 
             // 새로운 Access Token 발급
             String newAccessToken = jwtTokenProvider.generateToken(userId);
+
+            // 새로운 Access Token을 Redis에 저장
+            long accessTokenExpirationSeconds = jwtTokenProvider.getExpiration() / 1000;
+            accessTokenService.saveToken(userId, newAccessToken, accessTokenExpirationSeconds);
 
             // 새로운 Access Token을 쿠키에 저장
             ResponseCookie accessTokenCookie = ResponseCookie.from("Authorization", newAccessToken)
@@ -153,6 +181,31 @@ public class AuthController {
     public ResponseEntity<Map<String, Object>> logout(HttpServletRequest request,
             HttpServletResponse response) {
         try {
+            // 쿠키에서 토큰 추출
+            String token = extractTokenFromCookie(request);
+            String refreshToken = extractRefreshTokenFromCookie(request);
+
+            // Redis에서 Access Token 삭제
+            if (token != null) {
+                try {
+                    String userId = jwtTokenProvider.getSubjectFromToken(token);
+                    if (userId != null) {
+                        accessTokenService.deleteToken(userId);
+                    }
+                } catch (Exception e) {
+                    // 토큰 파싱 실패 시 무시
+                }
+            }
+
+            // DB에서 Refresh Token 삭제
+            if (refreshToken != null) {
+                try {
+                    refreshTokenService.deleteToken(refreshToken);
+                } catch (Exception e) {
+                    // 토큰 삭제 실패 시 무시
+                }
+            }
+
             // Access Token 쿠키 삭제 (ResponseCookie로 SameSite 명시적 설정)
             ResponseCookie accessTokenCookie = ResponseCookie.from("Authorization", "")
                     .httpOnly(true)

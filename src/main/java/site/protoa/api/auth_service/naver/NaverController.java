@@ -8,6 +8,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import site.protoa.api.auth_service.jwt.JwtTokenProvider;
 import site.protoa.api.auth_service.naver.dto.NaverUserInfo;
+import site.protoa.api.auth_service.token.AccessTokenService;
+import site.protoa.api.auth_service.token.RefreshTokenService;
 
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.ResponseCookie;
@@ -24,6 +26,8 @@ public class NaverController {
 
         private final NaverService naverService;
         private final JwtTokenProvider jwtTokenProvider;
+        private final AccessTokenService accessTokenService;
+        private final RefreshTokenService refreshTokenService;
 
         @Value("${frontend.login-callback-url:http://localhost:3000}")
         private String frontendCallbackUrl;
@@ -38,9 +42,12 @@ public class NaverController {
         private String cookieSameSite;
 
         @Autowired
-        public NaverController(NaverService naverService, JwtTokenProvider jwtTokenProvider) {
+        public NaverController(NaverService naverService, JwtTokenProvider jwtTokenProvider,
+                        AccessTokenService accessTokenService, RefreshTokenService refreshTokenService) {
                 this.naverService = naverService;
                 this.jwtTokenProvider = jwtTokenProvider;
+                this.accessTokenService = accessTokenService;
+                this.refreshTokenService = refreshTokenService;
         }
 
         /**
@@ -128,6 +135,14 @@ public class NaverController {
                         System.out.println("Token Length: " + jwt.length());
                         System.out.println("Refresh Token Length: " + refreshToken.length());
                         System.out.println("=".repeat(60) + "\n");
+
+                        // 4-2. Access Token을 Redis에 저장
+                        long accessTokenExpirationSeconds = jwtTokenProvider.getExpiration() / 1000;
+                        accessTokenService.saveToken(naverId, jwt, accessTokenExpirationSeconds);
+
+                        // 4-3. Refresh Token을 Neon DB에 저장
+                        long refreshTokenExpirationSeconds = jwtTokenProvider.getRefreshExpiration() / 1000;
+                        refreshTokenService.saveToken(naverId, refreshToken, refreshTokenExpirationSeconds);
 
                         // 5. Access Token을 쿠키에 저장 (ResponseCookie로 SameSite 명시적 설정)
                         ResponseCookie accessTokenCookie = ResponseCookie.from("Authorization", jwt)

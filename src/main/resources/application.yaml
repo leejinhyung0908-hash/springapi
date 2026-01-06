@@ -7,8 +7,33 @@ spring:
     web-application-type: servlet  # MVC 모드 명시
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
+      # Upstash Redis 설정
+      url: ${UPSTASH_REDIS_URL:}
+      password: ${UPSTASH_REDIS_TOKEN:}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+    # Neon DB (PostgreSQL) 설정
+    jpa:
+      hibernate:
+        ddl-auto: update
+      show-sql: false
+      properties:
+        hibernate:
+          dialect: org.hibernate.dialect.PostgreSQLDialect
+          format_sql: true
+  datasource:
+    url: ${NEON_DB_URL:}
+    username: ${NEON_DB_USERNAME:}
+    password: ${NEON_DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
 
 # Auth 설정
 kakao:
