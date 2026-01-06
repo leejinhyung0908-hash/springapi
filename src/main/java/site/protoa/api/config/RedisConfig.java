@@ -12,8 +12,6 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 import io.lettuce.core.ClientOptions;
 import io.lettuce.core.SocketOptions;
 import io.lettuce.core.TimeoutOptions;
-import io.lettuce.core.SslOptions;
-import io.lettuce.core.SslVerifyMode;
 import java.time.Duration;
 
 import java.net.URI;
@@ -92,34 +90,40 @@ public class RedisConfig {
         }
 
         // LettuceClientConfiguration 생성
-        LettuceClientConfiguration.Builder clientConfigBuilder = LettuceClientConfiguration.builder()
-                .clientOptions(ClientOptions.builder()
-                        .socketOptions(SocketOptions.builder()
-                                .connectTimeout(Duration.ofSeconds(10))
-                                .keepAlive(true)
-                                .build())
-                        .timeoutOptions(TimeoutOptions.builder()
-                                .fixedTimeout(Duration.ofSeconds(10))
-                                .build())
-                        .build())
-                .commandTimeout(Duration.ofSeconds(10));
+        LettuceClientConfiguration clientConfig;
 
-        // SSL 설정 (Upstash Redis는 SSL 필수)
         if (useSsl) {
-            try {
-                clientConfigBuilder.useSsl()
-                        .and()
-                        .sslOptions(SslOptions.builder()
-                                .build());
+            // SSL 사용하는 경우
+            clientConfig = LettuceClientConfiguration.builder()
+                    .clientOptions(ClientOptions.builder()
+                            .socketOptions(SocketOptions.builder()
+                                    .connectTimeout(Duration.ofSeconds(10))
+                                    .keepAlive(true)
+                                    .build())
+                            .timeoutOptions(TimeoutOptions.builder()
+                                    .fixedTimeout(Duration.ofSeconds(10))
+                                    .build())
+                            .build())
+                    .commandTimeout(Duration.ofSeconds(10))
+                    .useSsl()
+                    .build();
 
-                System.out.println("✅ SSL 설정 완료");
-            } catch (Exception e) {
-                System.err.println("⚠️ SSL 설정 실패: " + e.getMessage());
-                e.printStackTrace();
-            }
+            System.out.println("✅ SSL 설정 완료");
+        } else {
+            // SSL 사용하지 않는 경우
+            clientConfig = LettuceClientConfiguration.builder()
+                    .clientOptions(ClientOptions.builder()
+                            .socketOptions(SocketOptions.builder()
+                                    .connectTimeout(Duration.ofSeconds(10))
+                                    .keepAlive(true)
+                                    .build())
+                            .timeoutOptions(TimeoutOptions.builder()
+                                    .fixedTimeout(Duration.ofSeconds(10))
+                                    .build())
+                            .build())
+                    .commandTimeout(Duration.ofSeconds(10))
+                    .build();
         }
-
-        LettuceClientConfiguration clientConfig = clientConfigBuilder.build();
 
         // LettuceConnectionFactory 생성 (설정과 클라이언트 설정 전달)
         LettuceConnectionFactory factory = new LettuceConnectionFactory(config, clientConfig);
