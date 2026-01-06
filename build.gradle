@@ -1,11 +1,6 @@
-plugins {
-	id 'java'
-	id 'org.springframework.boot' version '3.5.7'
-	id 'io.spring.dependency-management' version '1.1.7'
-}
-
 // Gradle 플러그인(Jar)들을 plugins.gradle.org가 아니라
 // 직접 Maven Central 및 Spring 저장소에서 받도록 buildscript에도 저장소를 명시
+// buildscript {} 블록은 반드시 plugins {} 블록보다 앞에 와야 함
 buildscript {
 	repositories {
 		// Maven Central 기본 저장소
@@ -23,6 +18,12 @@ buildscript {
 		maven { url 'https://repo.spring.io/release' }
 		maven { url 'https://repo.spring.io/milestone' }
 	}
+}
+
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.5.7'
+	id 'io.spring.dependency-management' version '1.1.7'
 }
 
 allprojects {
