@@ -33,7 +33,7 @@ public class AuthController {
 
     @Autowired
     public AuthController(JwtTokenProvider jwtTokenProvider, AccessTokenService accessTokenService,
-                    RefreshTokenService refreshTokenService) {
+            RefreshTokenService refreshTokenService) {
         this.jwtTokenProvider = jwtTokenProvider;
         this.accessTokenService = accessTokenService;
         this.refreshTokenService = refreshTokenService;
@@ -98,8 +98,9 @@ public class AuthController {
     }
 
     /**
-     * 토큰 갱신
-     * Refresh Token으로 새로운 Access Token 발급
+     * 토큰 갱신 (세션 회전 포함)
+     * Refresh Token으로 새로운 Access Token과 Refresh Token 발급
+     * 이전 Refresh Token은 무효화되어 재사용 불가능
      * 
      * @param request  HttpServletRequest (쿠키 읽기용)
      * @param response HttpServletResponse (쿠키 설정용)
@@ -138,12 +139,22 @@ public class AuthController {
             // Refresh Token에서 사용자 ID 추출
             String userId = jwtTokenProvider.getSubjectFromToken(refreshToken);
 
+            // 세션 회전: 이전 Refresh Token 무효화 (보안 강화)
+            refreshTokenService.deleteToken(refreshToken);
+
             // 새로운 Access Token 발급
             String newAccessToken = jwtTokenProvider.generateToken(userId);
+
+            // 새로운 Refresh Token 발급 (세션 회전)
+            String newRefreshToken = jwtTokenProvider.generateRefreshToken(userId);
 
             // 새로운 Access Token을 Redis에 저장
             long accessTokenExpirationSeconds = jwtTokenProvider.getExpiration() / 1000;
             accessTokenService.saveToken(userId, newAccessToken, accessTokenExpirationSeconds);
+
+            // 새로운 Refresh Token을 DB에 저장
+            long refreshTokenExpirationSeconds = jwtTokenProvider.getRefreshExpiration() / 1000;
+            refreshTokenService.saveToken(userId, newRefreshToken, refreshTokenExpirationSeconds);
 
             // 새로운 Access Token을 쿠키에 저장
             ResponseCookie accessTokenCookie = ResponseCookie.from("Authorization", newAccessToken)
@@ -154,6 +165,16 @@ public class AuthController {
                     .sameSite(cookieSameSite.equals("None") ? "None" : cookieSameSite)
                     .build();
             response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
+
+            // 새로운 Refresh Token을 쿠키에 저장 (세션 회전)
+            ResponseCookie refreshTokenCookie = ResponseCookie.from("RefreshToken", newRefreshToken)
+                    .httpOnly(true)
+                    .secure(cookieSecure)
+                    .path("/")
+                    .maxAge(jwtTokenProvider.getRefreshExpiration() / 1000)
+                    .sameSite(cookieSameSite.equals("None") ? "None" : cookieSameSite)
+                    .build();
+            response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
 
             Map<String, Object> responseBody = new HashMap<>();
             responseBody.put("success", true);
