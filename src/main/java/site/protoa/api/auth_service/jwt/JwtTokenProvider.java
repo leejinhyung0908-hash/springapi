@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.UUID;
 
 @Component
 public class JwtTokenProvider {
@@ -21,10 +22,10 @@ public class JwtTokenProvider {
     }
 
     /**
-     * JWT 토큰 생성
+     * Access Token 생성
      * 
      * @param subject 사용자 식별자 (예: kakaoId)
-     * @return JWT 토큰 문자열
+     * @return Access Token 문자열
      */
     public String generateToken(String subject) {
         Date now = new Date();
@@ -34,6 +35,7 @@ public class JwtTokenProvider {
 
         return Jwts.builder()
                 .setSubject(subject)
+                .claim("type", "access") // 토큰 타입 명시 (보안 강화)
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
                 .signWith(key)
@@ -52,17 +54,68 @@ public class JwtTokenProvider {
     }
 
     /**
-     * JWT 토큰 유효성 검증
+     * JWT 토큰 유효성 검증 (기본 - 하위 호환성 유지)
      * 
      * @param token JWT 토큰
      * @return 유효 여부
+     * @deprecated validateAccessToken 또는 validateRefreshToken 사용 권장
      */
+    @Deprecated
     public boolean validateToken(String token) {
         try {
             getClaimsFromToken(token);
             return true;
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    /**
+     * Access Token 유효성 검증
+     * 토큰 타입이 "access"인지 확인
+     * 
+     * @param token JWT 토큰
+     * @return 유효 여부
+     */
+    public boolean validateAccessToken(String token) {
+        try {
+            Claims claims = getClaimsFromToken(token);
+            String tokenType = claims.get("type", String.class);
+            return "access".equals(tokenType);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Refresh Token 유효성 검증
+     * 토큰 타입이 "refresh"인지 확인
+     * 
+     * @param token JWT 토큰
+     * @return 유효 여부
+     */
+    public boolean validateRefreshToken(String token) {
+        try {
+            Claims claims = getClaimsFromToken(token);
+            String tokenType = claims.get("type", String.class);
+            return "refresh".equals(tokenType);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * 토큰 타입 조회
+     * 
+     * @param token JWT 토큰
+     * @return 토큰 타입 ("access" 또는 "refresh")
+     */
+    public String getTokenType(String token) {
+        try {
+            Claims claims = getClaimsFromToken(token);
+            return claims.get("type", String.class);
+        } catch (Exception e) {
+            return null;
         }
     }
 
@@ -118,10 +171,27 @@ public class JwtTokenProvider {
 
         return Jwts.builder()
                 .setSubject(subject)
+                .claim("type", "refresh") // 토큰 타입 명시 (보안 강화)
+                .claim("jti", UUID.randomUUID().toString()) // JWT ID - 토큰 고유 식별자 (보안 강화)
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
                 .signWith(key)
                 .compact();
+    }
+
+    /**
+     * Refresh Token에서 JTI (JWT ID) 추출
+     * 
+     * @param token Refresh Token
+     * @return JTI 또는 null
+     */
+    public String getJtiFromToken(String token) {
+        try {
+            Claims claims = getClaimsFromToken(token);
+            return claims.get("jti", String.class);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /**

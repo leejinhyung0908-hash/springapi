@@ -59,12 +59,12 @@ public class AuthController {
                                 "message", "인증이 필요합니다."));
             }
 
-            // 토큰 검증
-            if (!jwtTokenProvider.validateToken(token)) {
+            // Access Token 검증 (타입 확인 포함)
+            if (!jwtTokenProvider.validateAccessToken(token)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(Map.of(
                                 "error", "Unauthorized",
-                                "message", "유효하지 않은 토큰입니다."));
+                                "message", "유효하지 않은 Access Token입니다."));
             }
 
             // 토큰에서 사용자 ID 추출
@@ -120,8 +120,8 @@ public class AuthController {
                                 "message", "Refresh Token이 필요합니다."));
             }
 
-            // Refresh Token 검증
-            if (!jwtTokenProvider.validateToken(refreshToken)) {
+            // Refresh Token 검증 (타입 확인 포함)
+            if (!jwtTokenProvider.validateRefreshToken(refreshToken)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(Map.of(
                                 "error", "Unauthorized",
