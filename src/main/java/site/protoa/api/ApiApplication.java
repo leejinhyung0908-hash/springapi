@@ -155,3 +155,4 @@ public class ApiApplication {
 }
 // error please fix
 // 확인확인
+// redis update
